@@ -10,7 +10,7 @@ class Node():
         self.q=q
         self.cost=0.0
         self.parent=None
-
+        self.visibility = float('inf')
 class RRTStar():
     def __init__(self, env, robot, start, goal, xlimits, ylimits, goalBias=10 ,steersize=0.8):
         self.env=env
@@ -23,7 +23,7 @@ class RRTStar():
         self.yupperlimit=ylimits[1]
         self.goalBias=goalBias
         self.steersize=steersize
-        self.maxIter=800
+        self.maxIter=500
 
     def RRTSearch(self, animation=1):
         random.seed(0)
@@ -54,25 +54,33 @@ class RRTStar():
         if not nearinds:
             return newNode
 
+        costlist =[]
+        vislist= []
         dlist = []
         for i in nearinds:
             dx = newNode.q[0] - self.nodeTree[i].q[0]
             dy = newNode.q[1] - self.nodeTree[i].q[1]
             d = math.sqrt(dx ** 2 + dy ** 2)
             theta = math.atan2(dy, dx)
+            tmpvis =  self.cal_visibility(self.nodeTree[i], theta, d)
             if self.check_collision_extend(self.nodeTree[i], theta, d):
-                dlist.append(self.nodeTree[i].cost + d)
+                costlist.append(self.nodeTree[i].cost + d)
+                vislist.append(tmpvis)
+                dlist.append(self.nodeTree[i].cost + d +tmpvis)
             else:
+                costlist.append(float("inf"))
+                vislist.append(float("inf"))
                 dlist.append(float("inf"))
 
-        mincost = min(dlist)
-        minind = nearinds[dlist.index(mincost)]
+        mind = min(dlist)
+        minind = nearinds[dlist.index(mind)]
 
-        if mincost == float("inf"):
-            print("mincost is inf")
+        if mind == float("inf"):
+            print("mind is inf")
             return newNode
 
-        newNode.cost = mincost
+        newNode.cost = costlist[dlist.index(mind)]
+        newNode.visibility = vislist[dlist.index(mind)]
         newNode.parent = minind
 
         return newNode
@@ -101,7 +109,7 @@ class RRTStar():
             rndQ = [random.uniform(self.xlowerlimit, self.xupperlimit),
                    random.uniform(self.ylowerlimit, self.yupperlimit)]
         else:  # goal point sampling
-            rndQ = [2.6, -1.3]
+            rndQ = [self.goal.q[0], self.goal.q[1]]
 
         return rndQ
 
@@ -128,6 +136,7 @@ class RRTStar():
             path.append([node.q[0], node.q[1]])
             goalind = node.parent
         path.append([self.start.q[0], self.start.q[1]])
+        path.reverse()
         return path
 
     def calc_dist_to_goal(self, x, y):
@@ -178,6 +187,19 @@ class RRTStar():
             if not self.__CollisionCheck(tmpNode):
                 return False
         return True
+
+    def cal_visibility(self, nearNode, theta, d):
+        nodevis = 0.0
+        step = 0
+        tmpNode = copy.deepcopy(nearNode)
+        checksize=0.2
+        while self.__CollisionCheck(tmpNode):
+            tmpNode.q[0] += checksize * math.cos(theta)
+            tmpNode.q[1] += checksize * math.sin(theta)
+            step += 1
+
+        nodevis = 10/(step*checksize -d)
+        return nodevis
 
     def GetNearestListIndex(self, nodeTree, rndQ):
         dlist = [(node.q[0] - rndQ[0]) ** 2 + (node.q[1] - rndQ[1])** 2 for node in nodeTree]

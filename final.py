@@ -77,12 +77,12 @@ if __name__ == "__main__":
         show_animation=1
         if show_animation:
             rrt.DrawGraph()
-            plt.plot([x for (x, y) in path], [y for (x, y) in path], '-r')
+            plt.plot([x for (x, y) in path], [y for (x, y) in path], '-r', linewidth=5)
             plt.grid(True)
             plt.pause(0.01)  # Need for Mac
             plt.show()
         # Draw Found Path
-        '''
+        
         pathcolor=(1,0,0)
         handles=drawArmPath(env,robot,path,[pathcolor])
         # get trajectory
@@ -90,9 +90,11 @@ if __name__ == "__main__":
         traj.Init(robot.GetActiveConfigurationSpecification())
         for i in range(0,len(path)):
             traj.Insert(i,path[i][0:2])    
+    replay = 'y'
+    while (replay=='y'):
         planningutils.RetimeActiveDOFTrajectory(traj,robot)
         robot.GetController().SetPath(traj)
-        '''
+        replay=raw_input("replay? (y/n)\n")         
         ### END OF YOUR CODE ###
     waitrobot(robot)
 
