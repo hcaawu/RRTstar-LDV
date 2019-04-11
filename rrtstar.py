@@ -27,7 +27,7 @@ class RRTStar():
         self.failSparsity=0.2
         self.newHeuristic=0
         self.samplingStrategyBias=20
-        self.maxIter=500
+        self.maxIter=800
 
     def RRTSearch(self, animation=1):
         random.seed(0)
@@ -36,16 +36,16 @@ class RRTStar():
         self.nodeTree=[self.start]
         self.failNodes=[]
         for i in range(self.maxIter):
-            print len(self.failNodes)
+            #print len(self.failNodes)
             if firstFound:
-                self.goalBias=70
                 if self.failNodes and random.randint(0, 100) > self.samplingStrategyBias:
                     rndQ = self.get_point_around_failnodes()
+                    #rndQ = self.get_random_point()
                 else:  # regular sampling strategy
                     rndQ = self.get_random_point()
             else:
                 rndQ = self.get_random_point()         
-            minidx, _ = self.GetNearestListIndex(self.nodeTree, rndQ)
+            minidx = self.GetNearestListIndex(self.nodeTree, rndQ)
             newNode = self.steer(rndQ, minidx)
 
             if self.__CollisionCheck(newNode):
@@ -54,8 +54,8 @@ class RRTStar():
                 #self.robot.SetActiveDOFValues(newNode.q);
                 #self.env.UpdatePublishedBodies();
                 self.nodeTree.append(newNode)
-                if not firstFound:
-                    self.update_failNodes(newNode)
+                #if not firstFound:
+                self.update_failNodes(newNode)
                 self.rewire(newNode, nearinds, minidx)
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
@@ -97,11 +97,15 @@ class RRTStar():
                 step += 1
             step -= 1
             failNodeQ = [tmpNode.q[0], tmpNode.q[1]]
-            failNodeQ[0] = step * self.checksize * math.cos(theta)
-            failNodeQ[1] = step * self.checksize * math.sin(theta)
-            _, mindist = self.GetNearestListIndex(self.nodeTree,failNodeQ)
-            if not self.failNodes or mindist>self.failSparsity:
+            failNodeQ[0] = self.nodeTree[newNode.parent].q[0] + step * self.checksize * math.cos(theta)
+            failNodeQ[1] = self.nodeTree[newNode.parent].q[1] + step * self.checksize * math.sin(theta)
+            
+            if not self.failNodes:
                 self.failNodes.append(failNodeQ)
+            else:
+                mindist = self.GetNearestNeighborDist(self.failNodes,failNodeQ)
+                if  mindist>self.failSparsity:
+                    self.failNodes.append(failNodeQ)
         
 
 
@@ -182,7 +186,7 @@ class RRTStar():
 
         disglist = [self.calc_dist_to_goal(
             node.q[0], node.q[1]) for node in self.nodeTree]
-        goalinds = [disglist.index(i) for i in disglist if i <= self.checksize]
+        goalinds = [disglist.index(i) for i in disglist if i <= self.steersize]
 
         if not goalinds:
             return None
@@ -268,9 +272,13 @@ class RRTStar():
 
     def GetNearestListIndex(self, nodeTree, rndQ):
         dlist = [(node.q[0] - rndQ[0]) ** 2 + (node.q[1] - rndQ[1])** 2 for node in nodeTree]
+        minidx = dlist.index(min(dlist))
+        return minidx
+
+    def GetNearestNeighborDist(self, failNodes, rndQ):
+        dlist = [(node[0] - rndQ[0]) ** 2 + (node[1] - rndQ[1])** 2 for node in failNodes]
         mindist = min(dlist)
-        minidx = dlist.index(mindist)
-        return minidx,mindist
+        return mindist
 
     def __CollisionCheck(self, node):
         self.robot.SetActiveDOFValues(node.q);
