@@ -27,7 +27,7 @@ class RRTStar():
         self.failSparsity=0.2
         self.newHeuristic=0
         self.samplingStrategyBias=20
-        self.maxIter=800
+        self.maxIter=1000
 
     def RRTSearch(self, animation=1):
         random.seed(0)
@@ -39,9 +39,9 @@ class RRTStar():
             #print len(self.failNodes)
             if firstFound:
                 if self.failNodes and random.randint(0, 100) > self.samplingStrategyBias:
-                    rndQ = self.get_point_around_failnodes()
-                    #rndQ = self.get_random_point()
-                else:  # regular sampling strategy
+                    #rndQ = self.get_point_around_failnodes()
+                    rndQ = self.get_random_point()
+                else:  # rnegular sampling strategy
                     rndQ = self.get_random_point()
             else:
                 rndQ = self.get_random_point()         
@@ -92,13 +92,13 @@ class RRTStar():
             step = 0
             tmpNode = copy.deepcopy(newNode)
             while self.__CollisionCheck(tmpNode):
-                tmpNode.q[0] += self.checksize * math.cos(theta)
-                tmpNode.q[1] += self.checksize * math.sin(theta)
+                tmpNode.q[0] += self.failSparsity * math.cos(theta)
+                tmpNode.q[1] += self.failSparsity * math.sin(theta)
                 step += 1
             step -= 1
             failNodeQ = [tmpNode.q[0], tmpNode.q[1]]
-            failNodeQ[0] = self.nodeTree[newNode.parent].q[0] + step * self.checksize * math.cos(theta)
-            failNodeQ[1] = self.nodeTree[newNode.parent].q[1] + step * self.checksize * math.sin(theta)
+            failNodeQ[0] = newNode.q[0] + step * self.failSparsity * math.cos(theta)
+            failNodeQ[1] = newNode.q[1] + step * self.failSparsity * math.sin(theta)
             
             if not self.failNodes:
                 self.failNodes.append(failNodeQ)
@@ -168,8 +168,8 @@ class RRTStar():
     def get_point_around_failnodes(self):
         a = random.randint(0, len(self.failNodes)-1)
         failrndC = self.failNodes[a]
-        rndQ = [failrndC[0]+random.uniform(-self.checksize, self.checksize),
-               failrndC[1]+random.uniform(-self.checksize, self.checksize)]
+        rndQ = [failrndC[0]+random.uniform(-self.failSparsity, self.failSparsity),
+               failrndC[1]+random.uniform(-self.failSparsity, self.failSparsity)]
         return rndQ
 
     def get_random_point(self):
@@ -186,7 +186,7 @@ class RRTStar():
 
         disglist = [self.calc_dist_to_goal(
             node.q[0], node.q[1]) for node in self.nodeTree]
-        goalinds = [disglist.index(i) for i in disglist if i <= self.steersize]
+        goalinds = [disglist.index(i) for i in disglist if i <= self.checksize]
 
         if not goalinds:
             return None

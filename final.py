@@ -61,16 +61,33 @@ if __name__ == "__main__":
     table4.SetTransform([0.70711,0,0,0.70711,-0.578,1.605,0.74])
     table5.SetTransform([1,0,0,0,2.2,0.3,0.74])
     '''
+
+    table1=env.GetKinBody('Table1')
+    table2=env.GetKinBody('Table2')
+    table3=env.GetKinBody('Table3')
+    table4=env.GetKinBody('Table4')
+    table5=env.GetKinBody('Table5')
+    table6=env.GetKinBody('Table6')
+    table1.SetTransform([0.70711,0,0,0.70711,0.07657,-1.497,0.74])
+    table2.SetTransform([0.70711,0,0,0.70711,1.71,0.198,0.74])
+    table3.SetTransform([0.70711,0,0,0.70711,1.71,0.198,0.74])
+    table4.SetTransform([1,0,0,0,-0.53473,1.06,0.74])
+    table5.SetTransform([1,0,0,0,-2.23025,-0.45607,0.74])
+    table6.SetTransform([1,0,0,0,-0.53473,1.06,0.74])
+    
+    
     with env:
     	robot.SetActiveDOFs([],DOFAffine.X|DOFAffine.Y)
     	print startconfig
         goalconfig = [2.6,-1.3]
+        goalconfig = [1.4,-1.3]
 
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
         bias=0
         stepsize=0.28
         K=8
+
         rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
         path=rrt.RRTSearch()
         print path
@@ -97,6 +114,6 @@ if __name__ == "__main__":
         replay=raw_input("replay? (y/n)\n")         
         ### END OF YOUR CODE ###
     waitrobot(robot)
-
+    
     raw_input("Press enter to exit...")
 
