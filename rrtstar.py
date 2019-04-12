@@ -12,7 +12,7 @@ class Node():
         self.parent=None
         self.visibility = float('inf')
 class RRTStar():
-    def __init__(self, env, robot, start, goal, xlimits, ylimits, goalBias=10 ,steersize=0.8):
+    def __init__(self, env, robot, start, goal, xlimits, ylimits, goalBias=10 ,steersize=0.3):
         self.env=env
         self.robot=robot
         self.start=Node(start)
@@ -23,11 +23,11 @@ class RRTStar():
         self.yupperlimit=ylimits[1]
         self.goalBias=goalBias
         self.steersize=steersize
-        self.checksize=0.3
-        self.failSparsity=0.2
+        self.checksize=0.2
+        self.failSparsity=0.1
         self.newHeuristic=0
         self.samplingStrategyBias=20
-        self.maxIter=1000
+        self.maxIter=2500
 
     def RRTSearch(self, animation=1):
         random.seed(0)
@@ -39,8 +39,8 @@ class RRTStar():
             #print len(self.failNodes)
             if firstFound:
                 if self.failNodes and random.randint(0, 100) > self.samplingStrategyBias:
-                    #rndQ = self.get_point_around_failnodes()
-                    rndQ = self.get_random_point()
+                    rndQ = self.get_point_around_failnodes()
+                    #rndQ = self.get_random_point()
                 else:  # rnegular sampling strategy
                     rndQ = self.get_random_point()
             else:
@@ -53,10 +53,14 @@ class RRTStar():
                 newNode = self.choose_parent(newNode, nearinds)
                 #self.robot.SetActiveDOFValues(newNode.q);
                 #self.env.UpdatePublishedBodies();
-                self.nodeTree.append(newNode)
-                #if not firstFound:
-                self.update_failNodes(newNode)
-                self.rewire(newNode, nearinds, minidx)
+                #print newNode.q
+                if newNode.parent == None:
+                    pass
+                else:
+                    self.nodeTree.append(newNode)
+                    #if not firstFound:
+                    self.update_failNodes(newNode)
+                    self.rewire(newNode, nearinds, minidx)
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
 
@@ -66,7 +70,7 @@ class RRTStar():
                     firstFound = False
                 else:
                     firstFound = True
-                    print "First Found! Iter: "+str(i)+". Cost: "+str(self.nodeTree[lastIndex].cost)
+                    print "First Found! Iter: "+ str(i)+". Cost: "+str(self.nodeTree[lastIndex].cost)
                     PathCost.append(self.nodeTree[lastIndex].cost)
 
             if firstFound and i % 50 == 0:
@@ -79,7 +83,7 @@ class RRTStar():
         #if lastIndex is None:
         #    return None
         path = self.gen_final_course(lastIndex)
-        print PathCost
+        print (PathCost)
         return path
 
     def update_failNodes(self, newNode):
@@ -138,7 +142,8 @@ class RRTStar():
         minind = nearinds[dlist.index(mind)]
 
         if mind == float("inf"):
-            print("mind is inf")
+            #print("mind is inf")
+            newNode.parent = None
             return newNode
 
         newNode.cost = costlist[dlist.index(mind)]
@@ -157,12 +162,12 @@ class RRTStar():
             (rndQ[1] - nearestNode.q[1]) ** 2 + (rndQ[0] - nearestNode.q[0]) ** 2)
         # Find a point within expandDis of nind, and closest to rnd
         if currentDistance <= self.steersize:
-            pass
+            newNode.cost = nearestNode.cost + currentDistance
         else:
             newNode.q[0] = nearestNode.q[0] + self.steersize * math.cos(theta)
             newNode.q[1] = nearestNode.q[1] + self.steersize * math.sin(theta)
-        newNode.cost = float("inf")
-        newNode.parent = None
+        newNode.cost = nearestNode.cost + self.steersize
+        newNode.parent = minidx
         return newNode
 
     def get_point_around_failnodes(self):
@@ -213,11 +218,11 @@ class RRTStar():
 
     def find_near_nodes(self, newNode):
         nnode = len(self.nodeTree)
-        r = min(20.0 * math.sqrt((math.log(nnode) / nnode)),self.steersize)
+        r = min(20.0 * math.sqrt((math.log(nnode) / nnode)), self.steersize)
         #  r = self.expandDis * 5.0
         dlist = [(node.q[0] - newNode.q[0]) ** 2 +
                  (node.q[1] - newNode.q[1]) ** 2 for node in self.nodeTree]
-        nearinds = [dlist.index(i) for i in dlist if i <= r ** 2]
+        nearinds = [dlist.index(i) for i in dlist if i <= r ]
         return nearinds
 
     def rewire(self, newNode, nearinds, minind):

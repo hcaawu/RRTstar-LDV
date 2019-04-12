@@ -79,7 +79,7 @@ if __name__ == "__main__":
     with env:
     	robot.SetActiveDOFs([],DOFAffine.X|DOFAffine.Y)
     	print startconfig
-        goalconfig = [2.6,-1.3]
+        #goalconfig = [2.6,-1.3]
         goalconfig = [1.4,-1.3]
 
         ### YOUR CODE HERE ###
