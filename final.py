@@ -61,7 +61,7 @@ if __name__ == "__main__":
     table4.SetTransform([0.70711,0,0,0.70711,-0.578,1.605,0.74])
     table5.SetTransform([1,0,0,0,2.2,0.3,0.74])
     '''
-
+    
     table1=env.GetKinBody('Table1')
     table2=env.GetKinBody('Table2')
     table3=env.GetKinBody('Table3')
@@ -84,13 +84,20 @@ if __name__ == "__main__":
 
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
-        bias=0
-        stepsize=0.28
-        K=8
 
-        rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
-        path=rrt.RRTSearch()
-        print path
+        with open('results/h0s1b50sp1.csv', mode='w') as rrtFile:
+            rrtFile_writer = csv.writer(rrtFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            rrtFile_writer.writerow(['Run','First Solution','FS Iter','samples','Path Cost History'])            
+            for i in range(1,3,1):
+                rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
+                path,allcosts,samples,firstTime,firstIter=rrt.RRTSearch()
+                print path
+                print allcosts
+                row=[str(i),str(firstTime),str(firstIter),str(samples)]
+                for j in range(len(allcosts)):
+                    row.append(str(allcosts[j]))
+                rrtFile_writer.writerow(row)
+        
         show_animation=1
         if show_animation:
             rrt.DrawGraph()

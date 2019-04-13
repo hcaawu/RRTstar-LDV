@@ -28,7 +28,8 @@ class RRTStar():
         self.failSparsity=0.1
         self.newHeuristic= 0
         self.samplingStrategyBias=50
-        self.maxIter=1500
+        self.maxIter=3000
+        self.r=self.steersize
         self.timestart = 0.0
         self.timefs = 0.0
         self.timeend =0.0
@@ -36,7 +37,7 @@ class RRTStar():
 
     def RRTSearch(self, animation=1):
         timestart = time.time()
-        random.seed(0)
+        #random.seed(0)
         firstFound = False
         self.nodeTree=[self.start]
         self.failNodes=[]
@@ -77,6 +78,9 @@ class RRTStar():
                     firstFound = False
                 else:
                     firstFound = True
+                    allcosts = []
+                    allcosts.append(minpathcost)
+                    firstIter = i
                     timefs = time.time() - timestart
                     #path = self.gen_final_course(lastIndex)
                     #self.cal_totalcost(path)
@@ -85,6 +89,7 @@ class RRTStar():
             if firstFound and i % 50 == 0:
                 #lastIndex =self.get_best_last_index()
                 bestpath, minpathcost = self.get_best_last_index()
+                allcosts.append(minpathcost)
                 #path = self.gen_final_course(lastIndex)
                 #self.cal_totalcost(path)
                 print "Iter: "+str(i)+". Cost: "+str(minpathcost)
@@ -95,12 +100,13 @@ class RRTStar():
         #if lastIndex is None:
         #    return None
         bestpath, minpathcost = self.get_best_last_index()
+        allcosts.append(minpathcost)
         #path = self.gen_final_course(lastIndex)
         timeend = time.time() - timestart
         print "Time: " + str(timeend)
         #self.cal_totalcost(path)
         #print self.totalcost
-        return bestpath
+        return bestpath, allcosts, len(self.nodeTree), timefs, firstIter
 
     def update_failNodes(self, newNode):
         if newNode.parent == None:
@@ -191,7 +197,7 @@ class RRTStar():
     def get_point_around_failnodes(self):
         a = random.randint(0, len(self.failNodes)-1)
         failrndC = self.failNodes[a]
-        randsize=0.2
+        randsize=self.steersize*self.failSparsity*10
         rndQ = [failrndC[0]+random.uniform(-randsize, randsize),
                failrndC[1]+random.uniform(-randsize, randsize)]
         while not self.__CollisionCheckQ(rndQ):
@@ -269,11 +275,11 @@ class RRTStar():
 
     def find_near_nodes(self, newNode):
         nnode = len(self.nodeTree)
-        r = min(20.0 * math.sqrt((math.log(nnode) / nnode)), self.steersize)
+        self.r = min(50.0 * math.sqrt((math.log(nnode) / nnode)), self.steersize)
         #  r = self.expandDis * 5.0
         dlist = [(node.q[0] - newNode.q[0]) ** 2 +
                  (node.q[1] - newNode.q[1]) ** 2 for node in self.nodeTree]
-        nearinds = [dlist.index(i) for i in dlist if i <= r ]
+        nearinds = [dlist.index(i) for i in dlist if i <= self.r ]
         return nearinds
 
     def rewire(self, newNode, nearinds, minind):
