@@ -4,6 +4,7 @@ import math
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 class Node():
     def __init__(self,q):
@@ -25,14 +26,18 @@ class RRTStar():
         self.steersize=steersize
         self.checksize=0.2
         self.failSparsity=0.1
-        self.newHeuristic=0
+        self.newHeuristic= 1
         self.samplingStrategyBias=20
         self.maxIter=2500
+        self.timestart = 0.0
+        self.timefs = 0.0
+        self.timeend =0.0
+        self.totalcost = 0.0
 
     def RRTSearch(self, animation=1):
+        timestart = time.time()
         random.seed(0)
         firstFound = False
-        PathCost = []
         self.nodeTree=[self.start]
         self.failNodes=[]
         for i in range(self.maxIter):
@@ -70,20 +75,28 @@ class RRTStar():
                     firstFound = False
                 else:
                     firstFound = True
-                    print "First Found! Iter: "+ str(i)+". Cost: "+str(self.nodeTree[lastIndex].cost)
-                    PathCost.append(self.nodeTree[lastIndex].cost)
+                    timefs = time.time() - timestart
+                    path = self.gen_final_course(lastIndex)
+                    self.cal_totalcost(path)
+                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(self.totalcost) + ". Time: " + str(timefs)
+                    self.totalcost =0.0
 
             if firstFound and i % 50 == 0:
                 lastIndex =self.get_best_last_index()
-                print "Iter: "+str(i)+". Cost: "+str(self.nodeTree[lastIndex].cost)
-                PathCost.append(self.nodeTree[lastIndex].cost)
+                path = self.gen_final_course(lastIndex)
+                self.cal_totalcost(path)
+                print "Iter: "+str(i)+". Cost: "+str(self.totalcost)
+                self.totalcost =0.0
 
         # generate coruse
         #lastIndex = self.get_best_last_index()
         #if lastIndex is None:
         #    return None
         path = self.gen_final_course(lastIndex)
-        print (PathCost)
+        timeend = time.time() - timestart
+        print "Time: " + str(timeend)
+        self.cal_totalcost(path)
+        print self.totalcost
         return path
 
     def update_failNodes(self, newNode):
@@ -148,6 +161,7 @@ class RRTStar():
 
         newNode.cost = costlist[dlist.index(mind)]
         newNode.visibility = vislist[dlist.index(mind)]
+        #print "cost: "+ str(newNode.cost) + "  visibility : " + str(newNode.visibility)
         newNode.parent = minind
 
         return newNode
@@ -212,6 +226,11 @@ class RRTStar():
         path.append([self.start.q[0], self.start.q[1]])
         path.reverse()
         return path
+
+    def cal_totalcost(self, path):
+        for i in range(len(path)):
+            if i!= (len(path)-1):
+                self.totalcost += math.sqrt ((path[i][0]-path[i+1][0])**2 + (path[i][1]-path[i+1][1])**2)
 
     def calc_dist_to_goal(self, x, y):
         return np.linalg.norm([x - self.goal.q[0], y - self.goal.q[1]])
