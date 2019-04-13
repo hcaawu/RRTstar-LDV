@@ -26,13 +26,13 @@ class RRTStar():
         self.steersize=steersize
         self.checksize=0.2
         self.failSparsity=0.1
-        self.newHeuristic= 1
-        self.samplingStrategyBias=20
-        self.maxIter=2500
+        self.newHeuristic= 0
+        self.samplingStrategyBias=50
+        self.maxIter=1500
         self.timestart = 0.0
         self.timefs = 0.0
         self.timeend =0.0
-        self.totalcost = 0.0
+        #self.totalcost = 0.0
 
     def RRTSearch(self, animation=1):
         timestart = time.time()
@@ -70,34 +70,37 @@ class RRTStar():
                 self.DrawGraph(rndQ)
 
             if not firstFound and i % 10 == 0:
-                lastIndex =self.get_best_last_index()
-                if lastIndex is None:
+                #lastIndex =self.get_best_last_index()
+                bestpath, minpathcost = self.get_best_last_index()
+                if bestpath is None:
+                #if lastIndex is None:
                     firstFound = False
                 else:
                     firstFound = True
                     timefs = time.time() - timestart
-                    path = self.gen_final_course(lastIndex)
-                    self.cal_totalcost(path)
-                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(self.totalcost) + ". Time: " + str(timefs)
-                    self.totalcost =0.0
+                    #path = self.gen_final_course(lastIndex)
+                    #self.cal_totalcost(path)
+                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(timefs)
 
             if firstFound and i % 50 == 0:
-                lastIndex =self.get_best_last_index()
-                path = self.gen_final_course(lastIndex)
-                self.cal_totalcost(path)
-                print "Iter: "+str(i)+". Cost: "+str(self.totalcost)
-                self.totalcost =0.0
+                #lastIndex =self.get_best_last_index()
+                bestpath, minpathcost = self.get_best_last_index()
+                #path = self.gen_final_course(lastIndex)
+                #self.cal_totalcost(path)
+                print "Iter: "+str(i)+". Cost: "+str(minpathcost)
+                
 
         # generate coruse
         #lastIndex = self.get_best_last_index()
         #if lastIndex is None:
         #    return None
-        path = self.gen_final_course(lastIndex)
+        bestpath, minpathcost = self.get_best_last_index()
+        #path = self.gen_final_course(lastIndex)
         timeend = time.time() - timestart
         print "Time: " + str(timeend)
-        self.cal_totalcost(path)
-        print self.totalcost
-        return path
+        #self.cal_totalcost(path)
+        #print self.totalcost
+        return bestpath
 
     def update_failNodes(self, newNode):
         if newNode.parent == None:
@@ -140,6 +143,7 @@ class RRTStar():
             theta = math.atan2(dy, dx)
             if self.check_collision_extend(self.nodeTree[i], theta, d):
                 tmpvis =  self.cal_visibility(self.nodeTree[i], theta, d)
+                self.nodeTree[i].cost=self.cal_cost2come(i)
                 costlist.append(self.nodeTree[i].cost + d)
                 vislist.append(tmpvis)
                 if self.newHeuristic:
@@ -187,8 +191,13 @@ class RRTStar():
     def get_point_around_failnodes(self):
         a = random.randint(0, len(self.failNodes)-1)
         failrndC = self.failNodes[a]
-        rndQ = [failrndC[0]+random.uniform(-self.failSparsity, self.failSparsity),
-               failrndC[1]+random.uniform(-self.failSparsity, self.failSparsity)]
+        randsize=0.2
+        rndQ = [failrndC[0]+random.uniform(-randsize, randsize),
+               failrndC[1]+random.uniform(-randsize, randsize)]
+        while not self.__CollisionCheckQ(rndQ):
+            rndQ = [failrndC[0]+random.uniform(-randsize, randsize),
+                    failrndC[1]+random.uniform(-randsize, randsize)]
+
         return rndQ
 
     def get_random_point(self):
@@ -205,17 +214,28 @@ class RRTStar():
 
         disglist = [self.calc_dist_to_goal(
             node.q[0], node.q[1]) for node in self.nodeTree]
-        goalinds = [disglist.index(i) for i in disglist if i <= self.checksize]
+        goalinds = [disglist.index(i) for i in disglist if i <= 0]
 
         if not goalinds:
-            return None
+            return None, float("inf")
 
-        mincost = min([self.nodeTree[i].cost for i in goalinds])
-        for i in goalinds:
-            if self.nodeTree[i].cost == mincost:
-                return i
+        pathcost = []
+        path = []
+        for j in range(len(goalinds)):
+            path.append(self.gen_final_course(goalinds[j]))
+            pathcost.append(self.cal_totalcost(path[j]))
 
-        return None
+        mincost = min(pathcost)
+        for j in range(len(goalinds)):
+            if pathcost[j] == mincost:
+                return path[j], mincost
+
+        #mincost = min([self.nodeTree[i].cost for i in goalinds])
+        #for i in goalinds:
+        #    if self.nodeTree[i].cost == mincost:
+        #        return i
+
+        return None, float("inf")
 
     def gen_final_course(self, goalind):
         path = [[self.goal.q[0], self.goal.q[1]]]
@@ -227,10 +247,22 @@ class RRTStar():
         path.reverse()
         return path
 
+    def cal_cost2come(self, ind):
+        path=[]
+        while self.nodeTree[ind].parent is not None:
+            node = self.nodeTree[ind]
+            path.append([node.q[0], node.q[1]])
+            ind = node.parent
+        path.reverse()
+        cost2come=self.cal_totalcost(path)
+        return cost2come
+
     def cal_totalcost(self, path):
+        totalcost = 0
         for i in range(len(path)):
             if i!= (len(path)-1):
-                self.totalcost += math.sqrt ((path[i][0]-path[i+1][0])**2 + (path[i][1]-path[i+1][1])**2)
+                totalcost += math.sqrt ((path[i][0]-path[i+1][0])**2 + (path[i][1]-path[i+1][1])**2)
+        return totalcost
 
     def calc_dist_to_goal(self, x, y):
         return np.linalg.norm([x - self.goal.q[0], y - self.goal.q[1]])
@@ -306,6 +338,13 @@ class RRTStar():
 
     def __CollisionCheck(self, node):
         self.robot.SetActiveDOFValues(node.q);
+        #self.env.UpdatePublishedBodies();
+        if self.env.CheckCollision(self.robot):
+            return False
+        else:
+            return True
+    def __CollisionCheckQ(self, Q):
+        self.robot.SetActiveDOFValues(Q);
         #self.env.UpdatePublishedBodies();
         if self.env.CheckCollision(self.robot):
             return False
