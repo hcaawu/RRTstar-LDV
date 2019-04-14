@@ -24,11 +24,12 @@ class RRTStar():
         self.yupperlimit=ylimits[1]
         self.goalBias=goalBias
         self.steersize=steersize
+        self.r = steersize
         self.checksize=0.2
         self.failSparsity=0.1
-        self.newHeuristic= 0
+        self.newHeuristic= 1
         self.samplingStrategyBias=50
-        self.maxIter=3000
+        self.maxIter=2500
         self.r=self.steersize
         self.timestart = 0.0
         self.timefs = 0.0
@@ -36,11 +37,13 @@ class RRTStar():
         #self.totalcost = 0.0
 
     def RRTSearch(self, animation=1):
-        timestart = time.time()
+        self.timestart = time.time()
         #random.seed(0)
         firstFound = False
         self.nodeTree=[self.start]
         self.failNodes=[]
+        allcosts = []
+        firstIter = 0
         for i in range(self.maxIter):
             #print len(self.failNodes)
             if firstFound:
@@ -65,7 +68,7 @@ class RRTStar():
                 else:
                     self.nodeTree.append(newNode)
                     #if not firstFound:
-                    self.update_failNodes(newNode)
+                    #self.update_failNodes(newNode)
                     self.rewire(newNode, nearinds, minidx)
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
@@ -78,13 +81,12 @@ class RRTStar():
                     firstFound = False
                 else:
                     firstFound = True
-                    allcosts = []
                     allcosts.append(minpathcost)
                     firstIter = i
-                    timefs = time.time() - timestart
+                    self.timefs = time.time() - self.timestart
                     #path = self.gen_final_course(lastIndex)
                     #self.cal_totalcost(path)
-                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(timefs)
+                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(self.timefs)
 
             if firstFound and i % 50 == 0:
                 #lastIndex =self.get_best_last_index()
@@ -102,11 +104,11 @@ class RRTStar():
         bestpath, minpathcost = self.get_best_last_index()
         allcosts.append(minpathcost)
         #path = self.gen_final_course(lastIndex)
-        timeend = time.time() - timestart
-        print "Time: " + str(timeend)
+        self.timeend = time.time() - self.timestart
+        print "Time: " + str(self.timeend)
         #self.cal_totalcost(path)
         #print self.totalcost
-        return bestpath, allcosts, len(self.nodeTree), timefs, firstIter
+        return bestpath, allcosts, len(self.nodeTree), self.timefs, firstIter
 
     def update_failNodes(self, newNode):
         if newNode.parent == None:
@@ -139,7 +141,8 @@ class RRTStar():
         if not nearinds:
             return newNode
 
-        costlist =[]
+        cost2comelist =[]
+        cost2golist =[]
         vislist= []
         dlist = []
         for i in nearinds:
@@ -148,16 +151,19 @@ class RRTStar():
             d = math.sqrt(dx ** 2 + dy ** 2)
             theta = math.atan2(dy, dx)
             if self.check_collision_extend(self.nodeTree[i], theta, d):
-                tmpvis =  self.cal_visibility(self.nodeTree[i], theta, d)
                 self.nodeTree[i].cost=self.cal_cost2come(i)
-                costlist.append(self.nodeTree[i].cost + d)
+                cost2comelist.append(self.nodeTree[i].cost + d)
+                cost2go = self.calc_dist_to_goal(self.nodeTree[i].q[0],self.nodeTree[i].q[1])
+                cost2golist.append(cost2go)
+                tmpvis =  self.cal_visibility(self.nodeTree[i], theta, d)
                 vislist.append(tmpvis)
+                #print "cost2come:  "+ str(self.nodeTree[i].cost + d) + "  cost2go:  " +str(cost2go) + "  visibility:  "+ str(tmpvis)
                 if self.newHeuristic:
-                    dlist.append(self.nodeTree[i].cost + d +tmpvis)
+                    dlist.append(self.nodeTree[i].cost + d +tmpvis+cost2go)
                 else:
                     dlist.append(self.nodeTree[i].cost + d)
             else:
-                costlist.append(float("inf"))
+                cost2comelist.append(float("inf"))
                 vislist.append(float("inf"))
                 dlist.append(float("inf"))
 
@@ -169,7 +175,7 @@ class RRTStar():
             newNode.parent = None
             return newNode
 
-        newNode.cost = costlist[dlist.index(mind)]
+        newNode.cost = cost2comelist[dlist.index(mind)]
         newNode.visibility = vislist[dlist.index(mind)]
         #print "cost: "+ str(newNode.cost) + "  visibility : " + str(newNode.visibility)
         newNode.parent = minind
@@ -328,7 +334,7 @@ class RRTStar():
             tmpNode.q[1] += checksize * math.sin(theta)
             step += 1
 
-        nodevis = 10/(step*checksize -d)
+        nodevis = -math.log(20*step*checksize)
 
         return nodevis
 
