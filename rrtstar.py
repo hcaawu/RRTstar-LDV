@@ -28,15 +28,15 @@ class RRTStar():
         self.failSparsity=0.1
         self.newHeuristic= 0
         self.samplingStrategyBias=50
-        self.maxIter=3000
+        self.maxIter=2000
         self.r=self.steersize
-        self.timestart = 0.0
-        self.timefs = 0.0
-        self.timeend =0.0
         #self.totalcost = 0.0
 
     def RRTSearch(self, animation=1):
         timestart = time.time()
+        timenow = 0.0
+        allcosts = []
+        alltimes = []
         #random.seed(0)
         firstFound = False
         self.nodeTree=[self.start]
@@ -65,7 +65,7 @@ class RRTStar():
                 else:
                     self.nodeTree.append(newNode)
                     #if not firstFound:
-                    self.update_failNodes(newNode)
+                    #self.update_failNodes(newNode)
                     self.rewire(newNode, nearinds, minidx)
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
@@ -78,18 +78,20 @@ class RRTStar():
                     firstFound = False
                 else:
                     firstFound = True
-                    allcosts = []
                     allcosts.append(minpathcost)
                     firstIter = i
-                    timefs = time.time() - timestart
+                    timenow = time.time() - timestart
+                    alltimes.append(timenow)
                     #path = self.gen_final_course(lastIndex)
                     #self.cal_totalcost(path)
-                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(timefs)
+                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(timenow)
 
-            if firstFound and i % 50 == 0:
+            if firstFound and i % 100 == 0:
                 #lastIndex =self.get_best_last_index()
                 bestpath, minpathcost = self.get_best_last_index()
                 allcosts.append(minpathcost)
+                timenow = time.time() - timestart
+                alltimes.append(timenow)
                 #path = self.gen_final_course(lastIndex)
                 #self.cal_totalcost(path)
                 print "Iter: "+str(i)+". Cost: "+str(minpathcost)
@@ -102,11 +104,11 @@ class RRTStar():
         bestpath, minpathcost = self.get_best_last_index()
         allcosts.append(minpathcost)
         #path = self.gen_final_course(lastIndex)
-        timeend = time.time() - timestart
-        print "Time: " + str(timeend)
+        timenow = time.time() - timestart
+        print "Time: " + str(timenow)
         #self.cal_totalcost(path)
         #print self.totalcost
-        return bestpath, allcosts, len(self.nodeTree), timefs, firstIter
+        return bestpath, allcosts, alltimes, len(self.nodeTree)
 
     def update_failNodes(self, newNode):
         if newNode.parent == None:
