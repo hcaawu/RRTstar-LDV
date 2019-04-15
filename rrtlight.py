@@ -24,29 +24,33 @@ class RRTStar():
         self.yupperlimit=ylimits[1]
         self.goalBias=goalBias
         self.steersize=steersize
-        self.checksize=0.2
-        self.failSparsity=0.2
-        self.newHeuristic= 0
+        self.r = steersize
+        self.checksize=0.3
+        self.failSparsity=0.1
+        #self.newHeuristic= 1
         self.samplingStrategyBias=50
-        self.maxIter=2000
+        self.maxIter= 800
         self.r=self.steersize
+        self.timestart = 0.0
+        self.timefs = 0.0
+        self.timeend =0.0
         #self.totalcost = 0.0
 
     def RRTSearch(self, animation=1):
-        timestart = time.time()
-        timenow = 0.0
-        allcosts = []
-        alltimes = []
+        random.seed(0)
+        self.timestart = time.time()
         #random.seed(0)
         firstFound = False
         self.nodeTree=[self.start]
         self.failNodes=[]
+        allcosts = []
+        firstIter = 0
         for i in range(self.maxIter):
             #print len(self.failNodes)
             if firstFound:
                 if self.failNodes and random.randint(0, 100) > self.samplingStrategyBias:
-                    rndQ = self.get_point_around_failnodes()
-                    #rndQ = self.get_random_point()
+                    #rndQ = self.get_point_around_failnodes()
+                    rndQ = self.get_random_point()
                 else:  # rnegular sampling strategy
                     rndQ = self.get_random_point()
             else:
@@ -56,17 +60,23 @@ class RRTStar():
 
             if self.__CollisionCheck(newNode):
                 nearinds = self.find_near_nodes(newNode)
-                newNode = self.choose_parent(newNode, nearinds)
+                if not firstFound:
+                    self.choose_best_ray(newNode,nearinds)
+                    self.update_failNodes(newNode)
+                else:
+                    newNode = self.choose_parent(newNode, nearinds)
                 #self.robot.SetActiveDOFValues(newNode.q);
                 #self.env.UpdatePublishedBodies();
                 #print newNode.q
-                if newNode.parent == None:
-                    pass
-                else:
-                    self.nodeTree.append(newNode)
-                    #if not firstFound:
-                    self.update_failNodes(newNode)
-                    self.rewire(newNode, nearinds, minidx)
+                    if newNode.parent == None:
+                        pass
+                    else:
+                        #self.update_failNodes(newNode)
+                        if firstFound:
+                            self.update_failNodes(newNode)
+                            self.nodeTree.append(newNode)
+                            self.rewire(newNode, nearinds, minidx)
+
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
 
@@ -80,18 +90,15 @@ class RRTStar():
                     firstFound = True
                     allcosts.append(minpathcost)
                     firstIter = i
-                    timenow = time.time() - timestart
-                    alltimes.append(timenow)
+                    self.timefs = time.time() - self.timestart
                     #path = self.gen_final_course(lastIndex)
                     #self.cal_totalcost(path)
-                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(timenow)
+                    print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(self.timefs)
 
-            if firstFound and i % 100 == 0:
+            if firstFound and i % 50 == 0:
                 #lastIndex =self.get_best_last_index()
                 bestpath, minpathcost = self.get_best_last_index()
                 allcosts.append(minpathcost)
-                timenow = time.time() - timestart
-                alltimes.append(timenow)
                 #path = self.gen_final_course(lastIndex)
                 #self.cal_totalcost(path)
                 print "Iter: "+str(i)+". Cost: "+str(minpathcost)
@@ -104,12 +111,11 @@ class RRTStar():
         bestpath, minpathcost = self.get_best_last_index()
         allcosts.append(minpathcost)
         #path = self.gen_final_course(lastIndex)
-        timenow = time.time() - timestart
-        alltimes.append(timenow)
-        print "Time: " + str(timenow)
+        self.timeend = time.time() - self.timestart
+        print "Time: " + str(self.timeend)
         #self.cal_totalcost(path)
         #print self.totalcost
-        return bestpath, allcosts, alltimes, len(self.nodeTree)
+        return bestpath, allcosts, len(self.nodeTree), self.timefs, firstIter
 
     def update_failNodes(self, newNode):
         if newNode.parent == None:
@@ -142,8 +148,6 @@ class RRTStar():
         if not nearinds:
             return newNode
 
-        costlist =[]
-        vislist= []
         dlist = []
         for i in nearinds:
             dx = newNode.q[0] - self.nodeTree[i].q[0]
@@ -151,17 +155,9 @@ class RRTStar():
             d = math.sqrt(dx ** 2 + dy ** 2)
             theta = math.atan2(dy, dx)
             if self.check_collision_extend(self.nodeTree[i], theta, d):
-                tmpvis =  self.cal_visibility(self.nodeTree[i], theta, d)
-                self.nodeTree[i].cost=self.cal_cost2come(i)
-                costlist.append(self.nodeTree[i].cost + d)
-                vislist.append(tmpvis)
-                if self.newHeuristic:
-                    dlist.append(self.nodeTree[i].cost + d +tmpvis)
-                else:
-                    dlist.append(self.nodeTree[i].cost + d)
+                #print "cost2come:  "+ str(self.nodeTree[i].cost + d) + "  cost2go:  " +str(cost2go) + "  visibility:  "+ str(tmpvis)
+                dlist.append(self.nodeTree[i].cost + d)
             else:
-                costlist.append(float("inf"))
-                vislist.append(float("inf"))
                 dlist.append(float("inf"))
 
         mind = min(dlist)
@@ -172,12 +168,65 @@ class RRTStar():
             newNode.parent = None
             return newNode
 
-        newNode.cost = costlist[dlist.index(mind)]
-        newNode.visibility = vislist[dlist.index(mind)]
+        newNode.cost = mind
         #print "cost: "+ str(newNode.cost) + "  visibility : " + str(newNode.visibility)
         newNode.parent = minind
 
         return newNode
+
+    def choose_best_ray(self, newNode, nearinds):
+        if not nearinds:
+            nearinds=[newNode.parent]
+            #return newNode
+        dlist=[]
+        vislist= []
+        steplist = []
+        thetalist = []
+        for i in nearinds:
+            dx = newNode.q[0] - self.nodeTree[i].q[0]
+            dy = newNode.q[1] - self.nodeTree[i].q[1]
+            d = math.sqrt(dx ** 2 + dy ** 2)
+            theta = math.atan2(dy, dx)
+            if self.check_collision_extend(self.nodeTree[i], theta, d):
+                self.nodeTree[i].cost=self.cal_cost2come(i)
+                tmpvis, step =  self.cal_visibility(newNode, theta, d)
+                thetalist.append(theta)
+                vislist.append(tmpvis)
+                steplist.append(step)
+                dlist.append(self.nodeTree[i].cost + d)
+            else:
+                steplist.append(-1)
+                vislist.append(float("inf"))
+                dlist.append(float("inf"))
+                thetalist.append(theta)
+
+        minvis = min(vislist)
+        minind = nearinds[vislist.index(minvis)]
+        minstep = steplist[vislist.index(minvis)]
+        mintheta = thetalist[vislist.index(minvis)]
+        if minvis == float("inf"):
+            #print("mind is inf")
+            newNode.parent = None
+            #return newNode
+        else:
+            q = [newNode.q[0], newNode.q[1]]
+            cost2come = dlist[vislist.index(minvis)]
+            parent = minind
+            while minstep>=0:
+                extend = Node(q)
+                extend.cost = cost2come
+                extend.parent = parent
+                self.nodeTree.append(extend)
+                parent = len(self.nodeTree)-1
+                cost2come += self.checksize
+                q[0] = q[0] + self.checksize * math.cos(mintheta)
+                q[1] = q[1] + self.checksize * math.sin(mintheta)
+                minstep -= 1
+
+        #extend along the best ray
+
+
+        #return newNode
 
     def steer(self, rndQ, minidx):
 
@@ -321,19 +370,17 @@ class RRTStar():
                 return False
         return True
 
-    def cal_visibility(self, nearNode, theta, d):
+    def cal_visibility(self, newNode, theta, d):
         nodevis = 0.0
         step = 0
-        tmpNode = copy.deepcopy(nearNode)
-        checksize=0.2
+        tmpNode = copy.deepcopy(newNode)
         while self.__CollisionCheck(tmpNode):
-            tmpNode.q[0] += checksize * math.cos(theta)
-            tmpNode.q[1] += checksize * math.sin(theta)
+            tmpNode.q[0] += self.checksize * math.cos(theta)
+            tmpNode.q[1] += self.checksize * math.sin(theta)
             step += 1
-
-        nodevis = 10/(step*checksize -d)
-
-        return nodevis
+        nodevis = -math.log(20*(step+1)*self.checksize)
+        step -= 1
+        return nodevis,step
 
     def GetNearestListIndex(self, nodeTree, rndQ):
         dlist = [(node.q[0] - rndQ[0]) ** 2 + (node.q[1] - rndQ[1])** 2 for node in nodeTree]

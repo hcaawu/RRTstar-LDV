@@ -85,14 +85,15 @@ if __name__ == "__main__":
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
 
-        with open('results/h0s0.csv', mode='w') as rrtFile:
+        with open('results/h0s1b80sp02.csv', mode='w') as rrtFile:
             rrtFile_writer = csv.writer(rrtFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             rrtFile_writer.writerow(['Run','samples','Path Cost History'])            
-            for i in range(1,3,1):
+            for i in range(1,11,1):
                 rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
                 path,allcosts,alltimes,samples=rrt.RRTSearch()
                 print path
                 print allcosts
+                print alltimes
                 row=[str(i),str(samples)]
                 for j in range(len(allcosts)):
                     row.append(str(allcosts[j]))
