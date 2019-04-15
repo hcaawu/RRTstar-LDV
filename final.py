@@ -85,10 +85,10 @@ if __name__ == "__main__":
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
 
-        with open('results/Heuristic/h1s1b50sp1trail3.csv', mode='w') as rrtFile:
+        with open('../results/Heuristic/h1s1b50sp1trail4.csv', mode='w') as rrtFile:
             rrtFile_writer = csv.writer(rrtFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             rrtFile_writer.writerow(['Run','First Solution','FS Iter','samples','Path Cost History'])            
-            for i in range(1,11,1):
+            for i in range(1,2,1):
                 rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
                 path,allcosts,samples,firstTime,firstIter=rrt.RRTSearch()
                 print path
