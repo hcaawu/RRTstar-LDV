@@ -81,11 +81,12 @@ if __name__ == "__main__":
     	print startconfig
         #goalconfig = [2.6,-1.3]
         goalconfig = [1.4,-1.3]
-
+        
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
-
-        with open('results/h0s0.csv', mode='w') as rrtFile:
+        rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
+        path,allcosts,alltimes,samples=rrt.RRTSearch()
+        with open('results/h0s0b80sp001.csv', mode='w') as rrtFile:
             rrtFile_writer = csv.writer(rrtFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             rrtFile_writer.writerow(['Run','samples','Path Cost History'])            
             for i in range(1,3,1):
@@ -97,10 +98,12 @@ if __name__ == "__main__":
                 for j in range(len(allcosts)):
                     row.append(str(allcosts[j]))
                 rrtFile_writer.writerow(row)
+                '''
                 row=[str(i),str(samples)]
                 for j in range(len(alltimes)):
                     row.append(str(alltimes[j]))
                 rrtFile_writer.writerow(row)
+                '''
         
         show_animation=1
         if show_animation:

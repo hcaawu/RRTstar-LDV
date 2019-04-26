@@ -16,8 +16,12 @@ class RRTStar():
     def __init__(self, env, robot, start, goal, xlimits, ylimits, goalBias=10 ,steersize=0.3):
         self.env=env
         self.robot=robot
+        self.DOF=len(start)
+
         self.start=Node(start)
         self.goal=Node(goal)
+
+
         self.xlowerlimit=xlimits[0]
         self.xupperlimit=xlimits[1]
         self.ylowerlimit=ylimits[0]
@@ -27,10 +31,9 @@ class RRTStar():
         self.checksize=0.2
         self.failSparsity=0.1
         self.newHeuristic= 0
-        self.samplingStrategyBias=50
-        self.maxIter=2000
+        self.samplingStrategyBias=20
+        self.maxIter=2500
         self.r=self.steersize
-        #self.totalcost = 0.0
 
     def RRTSearch(self, animation=1):
         timestart = time.time()
@@ -65,7 +68,7 @@ class RRTStar():
                 else:
                     self.nodeTree.append(newNode)
                     #if not firstFound:
-                    #self.update_failNodes(newNode)
+                    self.update_failNodes(newNode)
                     self.rewire(newNode, nearinds, minidx)
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
@@ -86,7 +89,7 @@ class RRTStar():
                     #self.cal_totalcost(path)
                     print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(timenow)
 
-            if firstFound and i % 100 == 0:
+            if firstFound and i % 50 == 0:
                 #lastIndex =self.get_best_last_index()
                 bestpath, minpathcost = self.get_best_last_index()
                 allcosts.append(minpathcost)
@@ -364,10 +367,12 @@ class RRTStar():
         plt.clf()
         if rnd is not None:
             plt.plot(rnd[0], rnd[1], "^k")
+        
         for node in self.nodeTree:
             if node.parent is not None:
                 plt.plot([node.q[0], self.nodeTree[node.parent].q[0]], [
                          node.q[1], self.nodeTree[node.parent].q[1]], "-b")
+        
         for q in self.failNodes:
             plt.plot(q[0],q[1],'xr')
         plt.plot(self.start.q[0], self.start.q[1], "oy")
