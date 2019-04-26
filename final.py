@@ -80,12 +80,17 @@ if __name__ == "__main__":
     	robot.SetActiveDOFs([],DOFAffine.X|DOFAffine.Y)
     	print startconfig
         #goalconfig = [2.6,-1.3]
-        goalconfig = [1.4,-1.3]
+        goalconfig = [0,-0.5]
         
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
-        rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
+        lowerlimits=[-3.41,-1.41]
+        upplerLimits=[0.1,1.41]
+        rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerLimits)
         path,allcosts,alltimes,samples=rrt.RRTSearch()
+        print path
+        print allcosts
+        '''
         with open('results/h0s0b80sp001.csv', mode='w') as rrtFile:
             rrtFile_writer = csv.writer(rrtFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             rrtFile_writer.writerow(['Run','samples','Path Cost History'])            
@@ -98,12 +103,7 @@ if __name__ == "__main__":
                 for j in range(len(allcosts)):
                     row.append(str(allcosts[j]))
                 rrtFile_writer.writerow(row)
-                '''
-                row=[str(i),str(samples)]
-                for j in range(len(alltimes)):
-                    row.append(str(alltimes[j]))
-                rrtFile_writer.writerow(row)
-                '''
+        '''
         
         show_animation=1
         if show_animation:
