@@ -11,6 +11,7 @@ class Node():
         self.q=q
         self.cost=0.0
         self.parent=None
+        self.uniDir=None
         self.visibility = float('inf')
 
 class FailNode():
@@ -35,7 +36,8 @@ class RRTStar():
 
         self.failSparsity=0.1
 
-        self.samplingStrategyBias=40
+        self.samplingStrategyBias=50
+        self.impBias=90
         self.maxIter=500
         self.r=self.steersize
 
@@ -44,7 +46,7 @@ class RRTStar():
         timenow = 0.0
         allcosts = []
         alltimes = []
-        random.seed(0)
+        #random.seed(0)
         firstFound = False
         self.nodeTree=[]
         self.nodeTree.append(self.start)
@@ -52,11 +54,11 @@ class RRTStar():
         for i in range(self.maxIter):
             if firstFound:
                 self.goalBias = -1
-                if self.failNodes and random.randint(0, 100) > self.samplingStrategyBias:
-                    rndQ = self.get_point_around_failnodes()
-                    #rndQ = self.get_random_point()
-                else:  # rnegular sampling strategy
+                if self.failNodes and random.randint(0, 100) > self.samplingStrategyBias: # rnegular sampling strategy
                     rndQ = self.get_random_point()
+                else:  
+                    #rndQ = self.get_random_point()
+                    rndQ = self.get_point_around_failnodes()
             else:
                 rndQ = self.get_random_point()         
             minidx = self.GetNearestListIndex(rndQ)
@@ -65,19 +67,16 @@ class RRTStar():
             if self.__CollisionCheck(newNode):
                 nearinds = self.find_near_nodes(newNode)
                 newNode = self.choose_parent(newNode, nearinds)
-                if newNode.parent == None:
-                    pass
-                else:
-                    self.nodeTree.append(newNode)
-                    #if not firstFound:
-                    self.update_failNodes(newNode)
-                    self.rewire(newNode, nearinds, minidx)
+                self.nodeTree.append(newNode)
+                self.updateVisibility(newNode)
+                self.addFailNode(newNode)
+                self.rewire(newNode, nearinds, minidx)
+                self.updateFailNodesImportance()
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
 
             if not firstFound and i % 10 == 0:
-                #lastIndex =self.get_best_last_index()
-                bestpath, minpathcost = self.get_best_last_index()
+                bestpath, minpathcost = self.get_best_solution()
                 if bestpath is None:
                 #if lastIndex is None:
                     firstFound = False
@@ -90,44 +89,58 @@ class RRTStar():
                     print "First Found! Iter: "+ str(i)+". Cost: "+ str(minpathcost) + ". Time: " + str(timenow)
 
             if firstFound and i % 50 == 0:
-                bestpath, minpathcost = self.get_best_last_index()
+                bestpath, minpathcost = self.get_best_solution()
                 allcosts.append(minpathcost)
                 timenow = time.time() - timestart
                 alltimes.append(timenow)
                 print "Iter: "+str(i)+". Cost: "+str(minpathcost)
                 
 
-        bestpath, minpathcost = self.get_best_last_index()
+        bestpath, minpathcost = self.get_best_solution()
         allcosts.append(minpathcost)
         timenow = time.time() - timestart
         print "Time: " + str(timenow)
         return bestpath, allcosts, alltimes, len(self.nodeTree)
 
-    def update_failNodes(self, newNode):
-        if newNode.parent == None:
-            pass
-        else:
-            uniDir,_ = self.computeUniDir(self.nodeTree[newNode.parent].q, newNode.q)
-            step = 0
-            tmpNode = copy.deepcopy(newNode)
-            while self.__CollisionCheck(tmpNode):
-                for i in range(self.DOF):
-                    tmpNode.q[i] += self.failSparsity * uniDir[i]
-                step += 1
-            step -= 1
-            failNodeQ = []
+    def addFailNode(self, newNode):
+        uniDir,_ = self.computeUniDir(self.nodeTree[newNode.parent].q, newNode.q)
+        step = 0
+        tmpNode = copy.deepcopy(newNode)
+        while self.__CollisionCheck(tmpNode):
             for i in range(self.DOF):
-                failNodeQ.append(newNode.q[i] + step * self.failSparsity * uniDir[i])
-            
-            if not self.failNodes:
+                tmpNode.q[i] += self.failSparsity * uniDir[i]
+            step += 1
+        step -= 1
+        failNodeQ = []
+        for i in range(self.DOF):
+            failNodeQ.append(newNode.q[i] + step * self.failSparsity * uniDir[i])
+        
+        if not self.failNodes:
+            failNode = FailNode(failNodeQ)
+            self.failNodes.append(failNode)
+        else:
+            mindist = self.GetNearestNeighborDist(failNodeQ)
+            if  mindist>self.failSparsity:
                 failNode = FailNode(failNodeQ)
                 self.failNodes.append(failNode)
+
+    def updateFailNodesImportance(self):
+        ballRadius = self.steersize
+        for failNode in self.failNodes:
+            distlist = [self.computeDistance(failNode.q, node.q) for node in self.nodeTree]
+            inds = [distlist.index(i) for i in distlist if i <= ballRadius]
+            if len(inds)<=0:
+                failNode.imp = float("inf")
             else:
-                mindist = self.GetNearestNeighborDist(failNodeQ)
-                if  mindist>self.failSparsity:
-                    failNode = FailNode(failNodeQ)
-                    self.failNodes.append(failNode)
-        
+                vis = 1.0
+                vol = 0.0
+                for idx in inds:
+                    if idx != 0:
+                        vis += self.nodeTree[idx].visibility
+                        vol += 1
+                avgVis = vis/vol
+                failNode.imp = avgVis/vol/vol
+  
 
     def computeDistance(self, qFrom, qTo): # get distance between two configs
         dist = 0
@@ -147,6 +160,7 @@ class RRTStar():
             return newNode
 
         dlist = []
+        dirlist = []
         for i in nearinds:
             nearNode = self.nodeTree[i]
             #d = self.computeDistance(nearNode.q, newNode.q)
@@ -154,19 +168,24 @@ class RRTStar():
             if self.check_collision_extend(nearNode, uniDir, d):
                 nearNode.cost=self.cal_cost2come(i)
                 dlist.append(nearNode.cost + d)
+                dirlist.append(uniDir)
             else:
                 dlist.append(float("inf"))
+                dirlist.append(uniDir)
 
         mind = min(dlist)
         minind = nearinds[dlist.index(mind)]
-
+        mindir = dirlist[dlist.index(mind)]
+        '''
         if mind == float("inf"):
             #print("mind is inf")
             newNode.parent = None
+            newNode.uniDir = None
             return newNode
-
+        '''
         newNode.cost = mind
         newNode.parent = minind
+        newNode.uniDir = mindir
 
         return newNode
 
@@ -185,13 +204,24 @@ class RRTStar():
                 newNode.q[i] = nearestNode.q[i] + self.steersize * uniDir[i]
         newNode.cost = nearestNode.cost + self.steersize
         newNode.parent = minidx
+        newNode.uniDir = uniDir
         return newNode
 
     def get_point_around_failnodes(self):
-        a = random.randint(0, len(self.failNodes)-1)
-        failrndNode = self.failNodes[a]
-        randsize = self.steersize*self.failSparsity*10
+        if random.randint(0, 100) > self.impBias:
+            a = random.randint(0, len(self.failNodes)-1)
+            failrndNode = self.failNodes[a]
+        else:
+            impList=[]
+            for failNode in self.failNodes:
+                impList.append(failNode.imp)
+            maxImp = max(impList)
+            print maxImp
+            maxind = impList.index(maxImp)
+            failrndNode = self.failNodes[maxind]
+            print failrndNode.q
 
+        randsize = self.steersize*self.failSparsity*10
         rndQ = []
         for i in range(self.DOF):
             rndQ.append(failrndNode.q[i]+random.uniform(-randsize, randsize))
@@ -214,11 +244,14 @@ class RRTStar():
 
         return rndQ
 
-    def get_best_last_index(self):
+    def get_best_solution(self):
 
-        disglist = [self.calc_dist_to_goal(node.q) for node in self.nodeTree]
+        disglist = [self.computeDistance(node.q, self.goal.q) for node in self.nodeTree]
         goalinds = [disglist.index(i) for i in disglist if i <= 0]
 
+        #for node in self.nodeTree:
+        #    print str(node.q)+','+str(node.visibility)
+        
         if not goalinds:
             return None, float("inf")
 
@@ -274,11 +307,7 @@ class RRTStar():
             if i!= (len(path)-1):
                 dist=self.computeDistance(path[i], path[i+1])
                 totalcost += dist
-                #totalcost += math.sqrt ((path[i][0]-path[i+1][0])**2 + (path[i][1]-path[i+1][1])**2)
         return totalcost
-
-    def calc_dist_to_goal(self, q):
-        return self.computeDistance(q, self.goal.q)
 
     def find_near_nodes(self, newNode):
         nnode = len(self.nodeTree)
@@ -298,13 +327,14 @@ class RRTStar():
         for i in nearinds:
             if i!=minind:
                 nearNode = self.nodeTree[i]
-                d = self.computeDistance(nearNode.q, newNode.q)
+                uniDir, d = self.computeUniDir(newNode.q, nearNode.q)
                 scost = newNode.cost + d               
                 if nearNode.cost > scost:
-                    uniDir,_ = self.computeUniDir(nearNode.q, newNode.q)
-                    if self.check_collision_extend(nearNode, uniDir, d):
+                    if self.check_collision_extend(newNode, uniDir, d):
                         nearNode.parent = nnode - 1
                         nearNode.cost = scost
+                        nearNode.uniDir = uniDir
+                        self.updateVisibility(nearNode)
 
     def check_collision_extend(self, nearNode, uniDir, d):
         tmpNode = copy.deepcopy(nearNode)
@@ -315,15 +345,16 @@ class RRTStar():
                 return False
         return True
 
-    def cal_visibility(self, nearNode, uniDir, d):
+    def updateVisibility(self, Node):
         step = 0
-        tmpNode = copy.deepcopy(nearNode)
+        tmpNode = copy.deepcopy(Node)
         while self.__CollisionCheck(tmpNode):
             for j in range(self.DOF):
-                tmpNode.q[j] += self.checksize * uniDir[j]
+                tmpNode.q[j] += self.checksize * Node.uniDir[j]
             step += 1
         step = step - 1
-        return step
+        Node.visibility = step
+
 
     def GetNearestListIndex(self, rndQ):
         dlist = []
@@ -370,9 +401,10 @@ class RRTStar():
             if node.parent is not None:
                 plt.plot([node.q[0], self.nodeTree[node.parent].q[0]], [
                          node.q[1], self.nodeTree[node.parent].q[1]], "-b")
-        
+
         for failNode in self.failNodes:
             plt.plot(failNode.q[0],failNode.q[1],'xr')
+
         plt.plot(self.start.q[0], self.start.q[1], "oy")
         plt.plot(self.goal.q[0], self.goal.q[1], "oy")
         plt.axis([-3.5, 0.1, -1.5, 1.5])
