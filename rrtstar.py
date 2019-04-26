@@ -3,6 +3,7 @@ import random
 import math
 import copy
 import numpy as np
+from sklearn.neighbors import KDTree
 import matplotlib.pyplot as plt
 import time
 
@@ -38,7 +39,7 @@ class RRTStar():
 
         self.samplingStrategyBias=50
         self.impBias=90
-        self.maxIter=500
+        self.maxIter=300
         self.r=self.steersize
 
     def RRTSearch(self, animation=1):
@@ -46,7 +47,7 @@ class RRTStar():
         timenow = 0.0
         allcosts = []
         alltimes = []
-        #random.seed(0)
+        random.seed(0)
         firstFound = False
         self.nodeTree=[]
         self.nodeTree.append(self.start)
@@ -75,7 +76,7 @@ class RRTStar():
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
 
-            if not firstFound and i % 10 == 0:
+            if not firstFound:# and i % 10 == 0:
                 bestpath, minpathcost = self.get_best_solution()
                 if bestpath is None:
                 #if lastIndex is None:
@@ -202,7 +203,7 @@ class RRTStar():
         else:
             for i in range(self.DOF):
                 newNode.q[i] = nearestNode.q[i] + self.steersize * uniDir[i]
-        newNode.cost = nearestNode.cost + self.steersize
+            newNode.cost = nearestNode.cost + self.steersize
         newNode.parent = minidx
         newNode.uniDir = uniDir
         return newNode
@@ -216,10 +217,10 @@ class RRTStar():
             for failNode in self.failNodes:
                 impList.append(failNode.imp)
             maxImp = max(impList)
-            print maxImp
+            #print maxImp
             maxind = impList.index(maxImp)
             failrndNode = self.failNodes[maxind]
-            print failrndNode.q
+            #print failrndNode.q
 
         randsize = self.steersize*self.failSparsity*10
         rndQ = []
@@ -357,6 +358,13 @@ class RRTStar():
 
 
     def GetNearestListIndex(self, rndQ):
+        
+        allpoints = [tuple(node.q) for node in self.nodeTree]
+        tree = KDTree(allpoints,leaf_size=2)
+        nearDist,nearInd=tree.query([tuple(rndQ)],k=1)
+        minidx=nearInd[0][0]
+        return minidx
+        '''
         dlist = []
         for node in self.nodeTree:
             dist = 0.0
@@ -365,6 +373,7 @@ class RRTStar():
             dlist.append(dist)       
         minidx = dlist.index(min(dlist))
         return minidx
+        '''
     
     def GetNearestNeighborDist(self, rndQ):
         dlist = []
