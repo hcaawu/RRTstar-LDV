@@ -49,7 +49,7 @@ if __name__ == "__main__":
   
     #set start config
     robot.SetActiveDOFs([],DOFAffine.X|DOFAffine.Y)
-    startconfig=[-3.4,-1.4]
+    startconfig=[-3.2,-1.4]
     robot.SetActiveDOFValues(startconfig);
     robot.GetController().SetDesired(robot.GetDOFValues());
     waitrobot(robot)
@@ -80,22 +80,22 @@ if __name__ == "__main__":
     	robot.SetActiveDOFs([],DOFAffine.X|DOFAffine.Y)
     	print startconfig
         #goalconfig = [2.6,-1.3]
-        goalconfig = [0,-0.5]
-        
+        #goalconfig = [0,-0.5]
+        goalconfig = [1.6,-0.8]
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
         lowerlimits=[-3.41,-1.41]
-        upplerLimits=[0.1,1.41]
-        rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerLimits)
-        path,allcosts,alltimes,samples=rrt.RRTSearch()
-        print path
-        print allcosts
-        '''
-        with open('results/h0s0b80sp001.csv', mode='w') as rrtFile:
+        upplerLimits=[3.41,1.41]
+        #rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerLimits)
+        #path,allcosts,alltimes,samples=rrt.RRTSearch()
+        #print path
+        #print allcosts
+        
+        with open('../results/WeightedSampling/trail2.csv', mode='w') as rrtFile:
             rrtFile_writer = csv.writer(rrtFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             rrtFile_writer.writerow(['Run','samples','Path Cost History'])            
             for i in range(1,3,1):
-                rrt=RRTStar(env, robot, startconfig, goalconfig, [-3.41, 3.41], [-1.41, 1.41])
+                rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerLimits)
                 path,allcosts,alltimes,samples=rrt.RRTSearch()
                 print path
                 print allcosts
@@ -103,7 +103,7 @@ if __name__ == "__main__":
                 for j in range(len(allcosts)):
                     row.append(str(allcosts[j]))
                 rrtFile_writer.writerow(row)
-        '''
+        
         
         show_animation=1
         if show_animation:

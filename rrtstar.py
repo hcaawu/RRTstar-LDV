@@ -38,8 +38,8 @@ class RRTStar():
         self.failSparsity=0.1
 
         self.samplingStrategyBias=50
-        self.impBias=90
-        self.maxIter=300
+        self.impBias=40
+        self.maxIter=1500
         self.r=self.steersize
 
     def RRTSearch(self, animation=1):
@@ -47,7 +47,7 @@ class RRTStar():
         timenow = 0.0
         allcosts = []
         alltimes = []
-        random.seed(0)
+        #random.seed(0)
         firstFound = False
         self.nodeTree=[]
         self.nodeTree.append(self.start)
@@ -177,13 +177,13 @@ class RRTStar():
         mind = min(dlist)
         minind = nearinds[dlist.index(mind)]
         mindir = dirlist[dlist.index(mind)]
-        '''
+        
         if mind == float("inf"):
             #print("mind is inf")
-            newNode.parent = None
-            newNode.uniDir = None
+            #newNode.parent = None
+            #newNode.uniDir = None
             return newNode
-        '''
+        
         newNode.cost = mind
         newNode.parent = minind
         newNode.uniDir = mindir
@@ -416,6 +416,6 @@ class RRTStar():
 
         plt.plot(self.start.q[0], self.start.q[1], "oy")
         plt.plot(self.goal.q[0], self.goal.q[1], "oy")
-        plt.axis([-3.5, 0.1, -1.5, 1.5])
+        plt.axis([-3.5, 3.5, -1.5, 1.5])
         plt.grid(True)
         plt.pause(0.01)
