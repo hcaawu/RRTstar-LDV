@@ -58,25 +58,26 @@ class RRTStar():
                 if self.failNodes and random.randint(0, 100) > self.samplingStrategyBias: # rnegular sampling strategy
                     rndQ = self.get_random_point()
                 else:  
-                    #rndQ = self.get_random_point()
-                    rndQ = self.get_point_around_failnodes()
+                    rndQ = self.get_random_point()
+                    #rndQ = self.get_point_around_failnodes() #LDV
             else:
                 rndQ = self.get_random_point()         
             minidx = self.GetNearestListIndex(rndQ)
             newNode = self.steer(rndQ, minidx)
 
-            self.addFailNode(newNode)
+            #self.addFailNode(newNode) #LDV
 
             if self.__CollisionCheck(newNode):
                 nearinds = self.find_near_nodes(newNode)
                 newNode = self.choose_parent(newNode, nearinds)
                 self.nodeTree.append(newNode)
-                self.updateVisibility(newNode)
+                #self.updateVisibility(newNode) # LDV
                 self.rewire(newNode, nearinds, minidx)
-                self.updateFailNodesImportance()
+                #self.updateFailNodesImportance() # LDV
+            '''
             if animation and i % 5 == 0:
                 self.DrawGraph(rndQ)
-
+            '''
             if not firstFound:# and i % 10 == 0:
                 bestpath, minpathcost = self.get_best_solution()
                 if bestpath is None:
@@ -336,7 +337,7 @@ class RRTStar():
                         nearNode.parent = nnode - 1
                         nearNode.cost = scost
                         nearNode.uniDir = uniDir
-                        #self.updateVisibility(nearNode) #LDV
+                        self.updateVisibility(nearNode)
 
     def check_collision_extend(self, nearNode, uniDir, d):
         tmpNode = copy.deepcopy(nearNode)

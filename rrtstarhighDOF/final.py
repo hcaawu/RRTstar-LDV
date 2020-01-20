@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     env.Reset()        
     # load a scene from ProjectRoom environment XML file
-    env.Load('data/pr2test2.env.xml')
+    env.Load('data/pr2test1.env.xml')
     time.sleep(0.1)
 
     # 1) get the 1st robot that is inside the loaded scene
@@ -48,54 +48,32 @@ if __name__ == "__main__":
     tuckarms(env,robot);
   
     #set start config
-    robot.SetActiveDOFs([],DOFAffine.X|DOFAffine.Y)
-    startconfig=[-3.2,-1.4]
+    jointnames =['l_shoulder_pan_joint','l_shoulder_lift_joint','l_elbow_flex_joint','l_upper_arm_roll_joint','l_wrist_flex_joint']
+    robot.SetActiveDOFs([robot.GetJoint(name).GetDOFIndex() for name in jointnames])      
+    startconfig = [-0.15,0.075,-1.008,0,-0.11]
+
     robot.SetActiveDOFValues(startconfig);
     robot.GetController().SetDesired(robot.GetDOFValues());
     waitrobot(robot)
-    '''
-    table1=env.GetKinBody('Table1')
-    table4=env.GetKinBody('Table4')
-    table5=env.GetKinBody('Table5')
-    table1.SetTransform([0.70711,0,0,0.70711,-2.3,-1.1,0.74])
-    table4.SetTransform([0.70711,0,0,0.70711,-0.578,1.605,0.74])
-    table5.SetTransform([1,0,0,0,2.2,0.3,0.74])
-    '''
-    
-    table1=env.GetKinBody('Table1')
-    table2=env.GetKinBody('Table2')
-    table3=env.GetKinBody('Table3')
-    table4=env.GetKinBody('Table4')
-    table5=env.GetKinBody('Table5')
-    table6=env.GetKinBody('Table6')
-    table1.SetTransform([0.70711,0,0,0.70711,0.07657,-1.497,0.74])
-    table2.SetTransform([0.70711,0,0,0.70711,1.71,0.198,0.74])
-    table3.SetTransform([0.70711,0,0,0.70711,1.71,0.198,0.74])
-    table4.SetTransform([1,0,0,0,-0.53473,1.06,0.74])
-    table5.SetTransform([1,0,0,0,-2.23025,-0.45607,0.74])
-    table6.SetTransform([1,0,0,0,-0.53473,1.06,0.74])
-    
+    lowerlimit,upperlimit=robot.GetActiveDOFLimits();
+    print lowerlimit
+    print upperlimit
     
     with env:
-    	robot.SetActiveDOFs([],DOFAffine.X|DOFAffine.Y)
     	print startconfig
-        #goalconfig = [2.6,-1.3]
-        #goalconfig = [0,-0.5]
-        goalconfig = [1.6,-0.8]
+        goalconfig = [0.449,-0.201,-0.151,0,-0.11]
         ### YOUR CODE HERE ###
         ###call your plugin to plan, draw, and execute a path from the current configuration of the left arm to the goalconfig
-        lowerlimits=[-3.41,-1.41]
-        upplerLimits=[3.41,1.41]
-        #rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerLimits)
-        #path,allcosts,alltimes,samples=rrt.RRTSearch()
-        #print path
-        #print allcosts
-        
+        rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerlimits)
+        path,allcosts,alltimes,samples=rrt.RRTSearch()
+        print path
+        print allcosts
+        '''
         with open('../results/WeightedSampling/s90i30.csv', mode='w') as rrtFile:
             rrtFile_writer = csv.writer(rrtFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             rrtFile_writer.writerow(['Run','samples','Path Cost History'])            
             for i in range(1,21,1):
-                rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerLimits)
+                rrt=RRTStar(env, robot, startconfig, goalconfig, lowerlimits, upplerlimits)
                 path,allcosts,alltimes,samples=rrt.RRTSearch()
                 print path
                 print allcosts
@@ -113,19 +91,20 @@ if __name__ == "__main__":
             plt.pause(0.01)  # Need for Mac
             plt.show()
         # Draw Found Path
-        
+        '''
         pathcolor=(1,0,0)
         handles=drawArmPath(env,robot,path,[pathcolor])
         # get trajectory
         traj = RaveCreateTrajectory(env,'')
         traj.Init(robot.GetActiveConfigurationSpecification())
         for i in range(0,len(path)):
-            traj.Insert(i,path[i][0:2])    
+            traj.Insert(i,path[i])  
     replay = 'y'
-    while (replay=='y'):
+    while (replay=='y'):  
         planningutils.RetimeActiveDOFTrajectory(traj,robot)
-        robot.GetController().SetPath(traj)
-        replay=raw_input("replay? (y/n)\n")         
+        robot.GetController().SetPath(traj)  
+        replay=raw_input("replay? (y/n)\n")  
+ 
         ### END OF YOUR CODE ###
     waitrobot(robot)
     
