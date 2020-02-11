@@ -9,9 +9,7 @@ For this project, in order to better utilize environment information and further
 The proposed algorithm RRT* by Local Directional Visibility (RRT*-LDV) better utilizes local known information and innovates a weighted sampling strategy. The accelerated RRT*-LDV outperforms RRT* in convergence rate and success rate of finding narrow passages. A high Degree-Of-Freedom scenario is also experimented.
 
 2D Sampling Strategy Visualization
-![2D]
-(https://github.com/chenaaron0917/RRTstar-LDV/figs/2dofvis.png)
+![2D](https://github.com/chenaaron0917/RRTstar-LDV/figs/2dofvis.png)
 
 5D Path Visualization
-![5D]
-(https://github.com/chenaaron0917/RRTstar-LDV/figs/5dofs.png)
+![5D](https://github.com/chenaaron0917/RRTstar-LDV/figs/5dofs.png)
